@@ -1,4 +1,6 @@
 import math
+from enum import Enum
+
 import numpy as np
 import re
 
@@ -6,9 +8,17 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch import distributions as torchd
+from ncps.wirings import Random
+from ncps.keras import LTCCell, CfCCell
+
 
 import tools
 
+class SequenceCellType(Enum):
+    GRU="gru"
+    LSTM="lstm"
+    LTC="ltc"
+    CFC="cfc"
 
 class RSSM(nn.Module):
     def __init__(
@@ -18,6 +28,7 @@ class RSSM(nn.Module):
         hidden=200,
         rec_depth=1,
         discrete=False,
+        sequence_cell_type: SequenceCellType = SequenceCellType.GRU,
         act="SiLU",
         norm=True,
         mean_act="none",
@@ -56,7 +67,17 @@ class RSSM(nn.Module):
         inp_layers.append(act())
         self._img_in_layers = nn.Sequential(*inp_layers)
         self._img_in_layers.apply(tools.weight_init)
-        self._cell = GRUCell(self._hidden, self._deter, norm=norm)
+        if sequence_cell_type == SequenceCellType.GRU.value:
+            self._cell = GRUCell(self._hidden, self._deter, norm=norm)
+        elif sequence_cell_type == SequenceCellType.LSTM.value:
+            self._cell = nn.LSTMCell(self._hidden, self._deter)
+        elif sequence_cell_type == SequenceCellType.LTC.value:
+            wiring = Random(self._deter, self._deter, 0.5)
+            self._cell = LTCCell(wiring, self._hidden)
+        elif sequence_cell_type == SequenceCellType.CFC:
+            self._cell = CfCCell(self._hidden, self._deter, backbone_layers=2, backbone_units=128)
+        else:
+            self._cell = GRUCell(self._hidden, self._deter, norm=norm)
         self._cell.apply(tools.weight_init)
 
         img_out_layers = []

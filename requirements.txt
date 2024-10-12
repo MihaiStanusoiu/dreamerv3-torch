@@ -1,4 +1,5 @@
 torch==2.4.1
+keras
 matplotlib==3.5.0
 ruamel.yaml==0.17.4
 moviepy==1.0.3
@@ -12,3 +13,4 @@ crafter==1.8.0
 opencv-python-headless==4.7.0.72
 numpy==1.23.5
 tensorboard==2.17.1
+ncps

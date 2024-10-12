@@ -41,6 +41,7 @@ class WorldModel(nn.Module):
             config.dyn_hidden,
             config.dyn_rec_depth,
             config.dyn_discrete,
+            config.sequence_cell_type,
             config.act,
             config.norm,
             config.dyn_mean_act,
