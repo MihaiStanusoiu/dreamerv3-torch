@@ -1,5 +1,6 @@
 import math
 from enum import Enum
+from operator import concat
 
 import numpy as np
 import re
@@ -9,8 +10,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch import distributions as torchd
 from ncps.wirings import Random
-from ncps.keras import LTCCell, CfCCell
-
+# from ncps.keras import LTCCell, CfCCell
+from ncps.torch import LTCCell, CfCCell
 
 import tools
 
@@ -74,8 +75,8 @@ class RSSM(nn.Module):
         elif sequence_cell_type == SequenceCellType.LTC.value:
             wiring = Random(self._deter, self._deter, 0.5)
             self._cell = LTCCell(wiring, self._hidden)
-        elif sequence_cell_type == SequenceCellType.CFC:
-            self._cell = CfCCell(self._hidden, self._deter, backbone_layers=2, backbone_units=128)
+        elif sequence_cell_type == SequenceCellType.CFC.value:
+            self._cell = CfCCell(self._deter, self._deter)
         else:
             self._cell = GRUCell(self._hidden, self._deter, norm=norm)
         self._cell.apply(tools.weight_init)
@@ -240,8 +241,11 @@ class RSSM(nn.Module):
         for _ in range(self._rec_depth):  # rec depth is not correctly implemented
             deter = prev_state["deter"]
             # (batch, hidden), (batch, deter) -> (batch, deter), (batch, deter)
-            x, deter = self._cell(x, [deter])
-            deter = deter[0]  # Keras wraps the state in a list.
+            if not (isinstance(self._cell, CfCCell) or isinstance((self._cell, LTCCell))):
+                deter = [deter]  # Keras wraps the state in a list.
+            x, deter = self._cell(x, deter, 0.05)
+            if not (isinstance(self._cell, CfCCell) or isinstance((self._cell, LTCCell))):
+                deter = deter[0]  # Keras wraps the state in a list.
         # (batch, deter) -> (batch, hidden)
         x = self._img_out_layers(x)
         # (batch, hidden) -> (batch_size, stoch, discrete_num)
